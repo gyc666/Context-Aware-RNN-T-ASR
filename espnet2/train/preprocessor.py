@@ -142,12 +142,14 @@ class CommonPreprocessor(AbsPreprocessor):
         speech_volume_normalize: float = None,
         speech_name: str = "speech",
         text_name: str = "text",
+        context_name: str = "context_text",
         fs: np.int32 = 0,
     ):
         super().__init__(train)
         self.train = train
         self.speech_name = speech_name
         self.text_name = text_name
+        self.context_name = context_name
         self.speech_volume_normalize = speech_volume_normalize
         self.rir_apply_prob = rir_apply_prob
         self.noise_apply_prob = noise_apply_prob
@@ -319,6 +321,21 @@ class CommonPreprocessor(AbsPreprocessor):
             tokens = self.tokenizer.text2tokens(text)
             text_ints = self.token_id_converter.tokens2ids(tokens)
             data[self.text_name] = np.array(text_ints, dtype=np.int64)
+            if self.context_name in data:
+                pass
+            else:
+                assert check_return_type(data)
+        return data
+
+    def _context_text_process(
+        self, data: Dict[str, Union[str, np.ndarray]]
+    ) -> Dict[str, np.ndarray]:
+        if self.context_name in data and self.tokenizer is not None:
+            context_text = data[self.context_name]
+            context_text = self.text_cleaner(context_text)
+            tokens = self.tokenizer.text2tokens(context_text)
+            text_ints = self.token_id_converter.tokens2ids(tokens)
+            data[self.context_name] = np.array(text_ints, dtype=np.int64)
         assert check_return_type(data)
         return data
 
@@ -329,6 +346,10 @@ class CommonPreprocessor(AbsPreprocessor):
 
         data = self._speech_process(data)
         data = self._text_process(data)
+        # if data["context_text"] is None :
+        #     data = self._text_process(data)
+        data = self._context_text_process(data)
+        
         return data
 
 

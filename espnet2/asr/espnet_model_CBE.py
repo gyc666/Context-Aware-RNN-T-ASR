@@ -433,8 +433,7 @@ class ESPnetASRModel(AbsESPnetModel):
                 context_in_pad = context_in_pad.squeeze(dim=0).cuda()
                 if context_in_pad.dim() < 2:
                     context_in_pad = context_in_pad.unsqueeze(dim=0).cuda()
-                context_embedding = self.bert(context_in_pad)[0].detach()
-                context_embedding = self.feed_forward_bert(context_embedding)
+                context_embedding = self.bert(context_in_pad)[0]
 
                 '''
                 # 将Context Embedding 的 Tensor 画出来
@@ -443,8 +442,10 @@ class ESPnetASRModel(AbsESPnetModel):
                 image = image.squeeze(0)
                 image = uploader(image)
                 image.save("/home/yachao001/research_espnet/egs2/librispeech/asr1/exp/asr_12-14/embedding.jpg")
+                context_embedding = context_embedding.detach()
+                context_embedding = self.feed_forward_bert(context_embedding)
                 # 将Context Embedding 的 Tensor 画出来结束
-                
+                '''
                 # TNSE画图
                 A = context_embedding[0].cpu().clone()
                 context_embedding_cpu = context_embedding.cpu().clone()
@@ -452,8 +453,6 @@ class ESPnetASRModel(AbsESPnetModel):
                 plt.colorbar()
                 plt.show()
                 plt.savefig("/home/yachao001/research_espnet/egs2/librispeech/asr1/exp/asr_12-14/embedding.jpg")
-
-                '''
 
 
 

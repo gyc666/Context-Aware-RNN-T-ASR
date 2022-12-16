@@ -1250,11 +1250,15 @@ class AbsTask(ABC):
                     distributed_option=distributed_option,
                     mode="train",
                 )
+            args.train_bs_max = max_bs
+            args.train_bs_min = min_bs
             valid_iter_factory = cls.build_iter_factory(
                 args=args,
                 distributed_option=distributed_option,
                 mode="valid",
             )
+            args.valid_bs_max = max_bs
+            args.valid_bs_min = min_bs
             if not args.use_matplotlib and args.num_att_plot != 0:
                 args.num_att_plot = 0
                 logging.info("--use_matplotlib false => Changing --num_att_plot to 0")
@@ -1311,6 +1315,7 @@ class AbsTask(ABC):
 
             # Don't give args to trainer.run() directly!!!
             # Instead of it, define "Options" object and build here.
+
             trainer_options = cls.trainer.build_options(args)
             cls.trainer.run(
                 model=model,
@@ -1334,6 +1339,8 @@ class AbsTask(ABC):
         mode: str,
     ):
         if mode == "train":
+            # args.train_bs_max = max_bs
+            # args.train_bs_min = min_bs
             preprocess_fn = cls.build_preprocess_fn(args, train=True)
             collate_fn = cls.build_collate_fn(args, train=True)
             data_path_and_name_and_type = args.train_data_path_and_name_and_type
@@ -1529,6 +1536,9 @@ class AbsTask(ABC):
             f"[{mode}] mini-batch sizes summary: N-batch={len(bs_list)}, "
             f"mean={np.mean(bs_list):.1f}, min={np.min(bs_list)}, max={np.max(bs_list)}"
         )
+        global min_bs,max_bs
+        min_bs = np.min(bs_list)
+        max_bs = np.max(bs_list)
 
         if iter_options.distributed:
             world_size = torch.distributed.get_world_size()

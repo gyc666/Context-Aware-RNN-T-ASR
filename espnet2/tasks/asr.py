@@ -117,6 +117,25 @@ preencoder_choices = ClassChoices(
     default=None,
     optional=True,
 )
+bias_encoder_choices = ClassChoices(
+    "bias_encoder",
+    classes=dict(
+        conformer=ConformerEncoder,
+        transformer=TransformerEncoder,
+        contextual_block_transformer=ContextualBlockTransformerEncoder,
+        contextual_block_conformer=ContextualBlockConformerEncoder,
+        vgg_rnn=VGGRNNEncoder,
+        rnn=RNNEncoder,
+        wav2vec2=FairSeqWav2Vec2Encoder,
+        hubert=FairseqHubertEncoder,
+        hubert_pretrain=FairseqHubertPretrainEncoder,
+        longformer=LongformerEncoder,
+        branchformer=BranchformerEncoder,
+    ),
+    type_check=AbsEncoder,
+    default=None,
+    optional=True
+)
 encoder_choices = ClassChoices(
     "encoder",
     classes=dict(
@@ -178,6 +197,8 @@ class ASRTask(AbsTask):
         # --preencoder and --preencoder_conf
         preencoder_choices,
         # --encoder and --encoder_conf
+        bias_encoder_choices, 
+        # --bias_encoder and --bias_encoder_conf
         encoder_choices,
         # --postencoder and --postencoder_conf
         postencoder_choices,
@@ -379,11 +400,17 @@ class ASRTask(AbsTask):
     def required_data_names(
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
+        # # argparse.Namespace
         if not inference:
-            retval = ("speech", "text")
+        #     try:
+            retval = ("speech", "text", "context_text")
+        #     except Exception:
+        #         retval = ("speech", "text")
+        #     # retval = ("speech", "context_text")
         else:
             # Recognition mode
             retval = ("speech",)
+        # retval = ("speech", "text")
         return retval
 
     @classmethod
@@ -445,6 +472,16 @@ class ASRTask(AbsTask):
             input_size = preencoder.output_size()
         else:
             preencoder = None
+        
+        # 4.1 bias_encoder
+
+        if getattr(args, "bias_encoder", None) is not None:
+            bias_encoder_class = bias_encoder_choices.get_class(args.bias_encoder)
+            bias_encoder = bias_encoder_class(input_size=input_size, **args.bias_encoder_conf)
+            bias_encoder_output_size = bias_encoder.output_size()
+        else:
+            bias_encoder = None
+
 
         # 4. Encoder
         encoder_class = encoder_choices.get_class(args.encoder)
@@ -452,6 +489,7 @@ class ASRTask(AbsTask):
 
         # 5. Post-encoder block
         # NOTE(kan-bayashi): Use getattr to keep the compatibility
+        
         encoder_output_size = encoder.output_size()
         if getattr(args, "postencoder", None) is not None:
             postencoder_class = postencoder_choices.get_class(args.postencoder)
@@ -503,6 +541,7 @@ class ASRTask(AbsTask):
             specaug=specaug,
             normalize=normalize,
             preencoder=preencoder,
+            bias_encoder=bias_encoder,
             encoder=encoder,
             postencoder=postencoder,
             decoder=decoder,
